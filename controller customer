@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Http\Controllers\Backoffice;
+
+use App\Http\Controllers\Controller;
+use App\Models\Customer;
+use App\Models\Product;
+use Illuminate\Http\Request;
+
+class CustomerController extends Controller
+{
+    public function index()
+    {
+        $products = Product::all();
+        $customers = Customer::with('product')->get();
+
+        return view('backoffice.customer.index', compact('products', 'customers'));
+    }
+    public function create()
+    {
+        $products = Product::where('quantity', '>', 0)->get();
+
+        return view('backoffice.customer.create', compact('products'));
+    }
+
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'nama' => 'required',
+            'kode_customer'=> 'required',
+            'informasi_mata' => 'required',
+            'product_id' => 'required|exists:products,id',
+            'nomor_telepon' => 'required',
+        ]);
+
+        $product = Product::findOrFail($request->product_id);
+
+        if ($product->quantity <= 0) {
+            return redirect()->back()->with('error', 'Stok produk tidak mencukupi');
+        }
+
+
+        $product->decrement('quantity');
+        Customer::create([
+            'nama' => $request->nama,
+            'kode_customer' => $request->kode_customer,
+            'informasi_mata' => $request->informasi_mata,
+            'product_id' => $request->product_id,
+            'nomor_telepon' => $request->nomor_telepon,
+        ]);
+
+        return redirect()->route('backoffice.customer.index')->with('success', 'Customer berhasil ditambahkan');
+    }
+
+    // Edit Customer
+public function edit($id)
+{
+    $customer = Customer::findOrFail($id);
+    $products = Product::all();
+    return view('backoffice.customer.edit', compact('customer', 'products'));
+}
+
+public function update(Request $request, $id)
+{
+    $request->validate([
+        'nama' => 'required',
+        'kode_customer'=> 'required',
+        'informasi_mata' => 'required',
+        'product_id' => 'required|exists:products,id',
+        'nomor_telepon' => 'required',
+    ]);
+
+    $customer = Customer::findOrFail($id);
+    $customer->update([
+        'nama' => $request->nama,
+        'kode_customer'=> $request->kode_customer,
+        'informasi_mata' => $request->informasi_mata,
+        'product_id' => $request->product_id,
+        'nomor_telepon' => $request->nomor_telepon,
+    ]);
+
+    return redirect()->route('backoffice.customer.index')->with('success', 'Customer berhasil diupdate');
+    }
+
+    public function destroy($id)
+    {
+        $customer = Customer::findOrFail($id);
+        $customer->delete();
+
+        return redirect()->route('backoffice.customer.index')->with('success', 'Customer berhasil dihapus');
+    }
+
+}
